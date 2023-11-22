@@ -19,11 +19,16 @@
 #include <MQTTClientMbedOs.h>
 
 namespace {
-#define GROUP_NUMBER            "group2"
-#define MQTT_TOPIC_PUBLISH      "/estia/"GROUP_NUMBER"/uplink"
-#define MQTT_TOPIC_SUBSCRIBE    "/estia/"GROUP_NUMBER"/downlink"
+#define MQTT_TOPIC_PUBLISH_LED      "snayzz/feeds/led"
+#define MQTT_TOPIC_SUBSCRIBE_LED    "snayzz/feeds/led"
+#define MQTT_TOPIC_PUBLISH_HUMIDITY      "snayzz/feeds/humidity"
+#define MQTT_TOPIC_SUBSCRIBE_HUMIDITY    "snayzz/feeds/humidity"
+#define MQTT_TOPIC_PUBLISH_PRESSURE      "snayzz/feeds/pressure"
+#define MQTT_TOPIC_SUBSCRIBE_PRESSURE    "snayzz/feeds/pressure"
+#define MQTT_TOPIC_PUBLISH_TEMPERATURE      "snayzz/feeds/temperature"
+#define MQTT_TOPIC_SUBSCRIBE_TEMPERATURE    "snayzz/feeds/temperature"
 #define SYNC_INTERVAL           1
-#define MQTT_CLIENT_ID          "6LoWPAN_Node_"GROUP_NUMBER
+#define MQTT_CLIENT_ID          "mqtts://#{ snayzz }:#{ aio_CjyW19NIooI85RGqVHEVnLOQXjbq }@io.adafruit.com"
 }
 
 // Peripherals
@@ -36,7 +41,7 @@ MQTTClient *client;
 
 // MQTT
 // const char* hostname = "fd9f:590a:b158::1";
-const char* hostname = "broker.hivemq.com";
+const char* hostname = "io.adafruit.com";
 int port = 1883;
 
 // Error code
@@ -99,7 +104,7 @@ static void yield(){
  */
 static int8_t publish() {
 
-    char *mqttPayload = "Hello from 6TRON";
+    char *mqttPayload = "ON";
 
     MQTT::Message message;
     message.qos = MQTT::QOS1;
@@ -109,7 +114,7 @@ static int8_t publish() {
     message.payloadlen = strlen(mqttPayload);
 
     printf("Send: %s to MQTT Broker: %s\n", mqttPayload, hostname);
-    rc = client->publish(MQTT_TOPIC_PUBLISH, message);
+    rc = client->publish(MQTT_TOPIC_PUBLISH_LED, message);
     if (rc != 0) {
         printf("Failed to publish: %d\n", rc);
         return rc;
@@ -169,7 +174,9 @@ int main()
     MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
     data.MQTTVersion = 4;
     data.keepAliveInterval = 25;
-    data.clientID.cstring = MQTT_CLIENT_ID;
+    data.clientID.cstring = "6TRON";
+    data.username.cstring = (char*) "snayzz"; // Adafruit username
+    data.password.cstring = (char*) "aio_CjyW19NIooI85RGqVHEVnLOQXjbq"; // Adafruit user key
     if (client->connect(data) != 0){
         printf("Connection to MQTT Broker Failed\n");
     }
@@ -177,10 +184,10 @@ int main()
     printf("Connected to MQTT broker\n");
 
     /* MQTT Subscribe */
-    if ((rc = client->subscribe(MQTT_TOPIC_SUBSCRIBE, MQTT::QOS0, messageArrived)) != 0){
+    if ((rc = client->subscribe(MQTT_TOPIC_SUBSCRIBE_LED, MQTT::QOS0, messageArrived)) != 0){
         printf("rc from MQTT subscribe is %d\r\n", rc);
     }
-    printf("Subscribed to Topic: %s\n", MQTT_TOPIC_SUBSCRIBE);
+    printf("Subscribed to Topic: %s\n", MQTT_TOPIC_SUBSCRIBE_LED);
 
     yield();
 
