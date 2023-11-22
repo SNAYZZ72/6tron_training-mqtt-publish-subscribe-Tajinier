@@ -18,6 +18,7 @@
 #include <nsapi_dns.h>
 #include <MQTTClientMbedOs.h>
 #include "bme280.h"
+#include "Kernel.h"
 
 namespace
 {
@@ -31,7 +32,7 @@ namespace
 #define MQTT_TOPIC_SUBSCRIBE_TEMPERATURE "snayzz/feeds/temperature"
 #define MQTT_GROUPS_PUBLISH "snayzz/groups/default/json"
 #define SYNC_INTERVAL 1
-#define MQTT_CLIENT_ID "mqtts://#{ snayzz }:#{ aio_AGny34Z1aes5AYPF6Aen0zbE3OlZ }@io.adafruit.com"
+#define MQTT_CLIENT_ID "mqtts://#{ snayzz }:#{ aio_Bitg42hcxeGQH8Z830rWHRU9bWKs }@io.adafruit.com"
 }
 
 using namespace sixtron;
@@ -41,6 +42,7 @@ static DigitalOut led(LED1);
 static InterruptIn button(BUTTON1);
 static I2C i2c(I2C1_SDA, I2C1_SCL);
 static BME280 bme280(&i2c, BME280::I2CAddress::Address1);
+uint64_t lastMessagePublish = 0;
 
 Ticker ticker;
 
@@ -67,6 +69,12 @@ static EventQueue main_queue(32 * EVENTS_EVENT_SIZE);
  */
 void messageArrived(MQTT::MessageData &md)
 {
+    uint64_t currentTime = Kernel::get_ms_count();
+
+    if (currentTime - lastMessagePublish < 1000)
+    {
+        ThisThread::sleep_for(1200 - (currentTime - lastMessagePublish));
+    }
     MQTT::Message &message = md.message;
     printf("Message arrived: qos %d, retained %d, dup %d, packetid %d\r\n", message.qos, message.retained, message.dup, message.id);
     printf("Payload %.*s\r\n", message.payloadlen, (char *)message.payload);
@@ -90,6 +98,8 @@ void messageArrived(MQTT::MessageData &md)
         printf("RESETTING ...\n");
         system_reset();
     }
+
+    lastMessagePublish = Kernel::get_ms_count();
 }
 
 /*!
@@ -118,6 +128,12 @@ static void yield()
  */
 static int8_t publish()
 {
+    uint64_t currentTime = Kernel::get_ms_count();
+
+    if (currentTime - lastMessagePublish < 1000)
+    {
+        ThisThread::sleep_for(1200 - (currentTime - lastMessagePublish));
+    }
     float pressure = bme280.pressure();
 
     char mqttPayload[16];
@@ -138,11 +154,19 @@ static int8_t publish()
         printf("Failed to publish: %d\n", rc);
         return rc;
     }
+    lastMessagePublish = Kernel::get_ms_count();
     return 0;
 }
 
 static int8_t publishTemperatureHumidity()
 {
+    uint64_t currentTime = Kernel::get_ms_count();
+
+    if (currentTime - lastMessagePublish < 1000)
+    {
+        ThisThread::sleep_for(1200 - (currentTime - lastMessagePublish));
+    }
+
     float temperature = bme280.temperature();
     float humidity = bme280.humidity();
 
@@ -163,6 +187,7 @@ static int8_t publishTemperatureHumidity()
         printf("Failed to publish: %d\n", rc);
         return rc;
     }
+    lastMessagePublish = Kernel::get_ms_count();
     return 0;
 }
 
@@ -229,7 +254,7 @@ int main()
     data.keepAliveInterval = 25;
     data.clientID.cstring = "6TRON";
     data.username.cstring = (char *)"snayzz";                           // Adafruit username
-    data.password.cstring = (char *)"aio_AGny34Z1aes5AYPF6Aen0zbE3OlZ"; // Adafruit user key
+    data.password.cstring = (char *)"aio_Bitg42hcxeGQH8Z830rWHRU9bWKs"; // Adafruit user key
     if (client->connect(data) != 0)
     {
         printf("Connection to MQTT Broker Failed\n");
@@ -250,7 +275,7 @@ int main()
     }
     printf("Subscribed to Topic: %s\n", MQTT_TOPIC_SUBSCRIBE_PRESSURE);
 
-        if ((rc = client->subscribe(MQTT_GROUPS_PUBLISH, MQTT::QOS0, messageArrived)) != 0)
+    if ((rc = client->subscribe(MQTT_GROUPS_PUBLISH, MQTT::QOS0, messageArrived)) != 0)
     {
         printf("rc from MQTT subscribe is %d\r\n", rc);
     }
